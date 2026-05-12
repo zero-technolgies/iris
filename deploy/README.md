@@ -22,5 +22,6 @@ deploy/
 
 ## What's not here
 
-Cluster-level infrastructure config (cert-manager, ArgoCD itself, ingress) lives in `/iac/k8s-config/`.
+Cluster-level infrastructure (cert-manager, ArgoCD) currently lives in `/iac/k8s-config/` as imperative configs from initial bootstrap. This is temporary scaffolding — once Stories 3 and 4 of Epic 2 are complete, these will move under `/deploy/applications/` and `/iac/` will be removed.
+
 Application source code and service definitions live in `/services/`.
