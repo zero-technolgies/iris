@@ -1,0 +1,41 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment
+.env
+.env.local
+*.env
+
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+vendor/
+go.work
+go.work.sum
+
+# Node (in case any tooling needs it)
+node_modules/
+dist/
+build/
+
+# Logs
+*.log
+
+# Secrets
+*.pem
+*.key
+*.crt
+secrets/
