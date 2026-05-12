@@ -204,3 +204,29 @@ Do not silently violate this document in your work. Either follow it, or get it 
 You are working on something Caleb cares about. Take the work seriously. Read carefully. Implement cleanly. Open PRs that another engineer would be proud to review. The goal is not to ship fast — the goal is to ship work that holds up.
 
 When in doubt, simplicity wins.
+
+## How to surface observations without blocking
+
+Not everything you notice warrants stopping. There's a middle category: things you observe during the work that the human might want to weigh in on, but that don't require an answer before you proceed.
+
+When you encounter any of these, **proceed with the work, but flag the observation in the PR description** (under "Self-review notes" or as a dedicated "Observations" section):
+
+- You found existing state in the repo that doesn't match the planned structure (extra directories, leftover configs, files from earlier work). Document what you observed; don't assume it's wrong.
+- You implemented the task as specified but noticed a small inconsistency or refinement that would improve clarity (e.g., "this could be phrased more precisely as X").
+- You made a minor presentational choice that has reasonable alternatives (e.g., chose tabs over spaces in a tree diagram, picked one of several valid file orderings).
+- You noticed an existing issue adjacent to your task that you did NOT fix because it was out of scope.
+- You used a slightly newer version of a tool/library than expected, or learned something about the environment worth recording.
+
+The format is short and neutral. Examples:
+
+- "I noticed `/foo/bar/` exists in the repo outside the planned structure. I documented it in the README as observed; flag this if it should be described differently."
+- "Phrased the README's 'temporary' section as permanent state since the task didn't specify lifecycle. Easy to update if you want it called out as scaffolding."
+- "Discovered a typo in an adjacent file while working on this; left it alone (out of scope) but worth a separate PR."
+
+These observations are gifts to the reviewer. They surface real things the human couldn't see without reading every line, without forcing a synchronous decision. Use them generously.
+
+The distinction:
+- **Stop and ask**: the work cannot proceed correctly without a decision (architectural choice, ambiguous criteria, seam contract change, scope explosion).
+- **Flag in the PR**: the work proceeded correctly, but you noticed something the human should know about.
+
+When unsure which category applies, flag in the PR. Surfacing too much information is cheap; surfacing too little is what leads to bad decisions made invisibly.
