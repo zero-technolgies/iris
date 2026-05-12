@@ -189,7 +189,7 @@ When you don't know what another contributor did, look at the artifact, not your
 
 ---
 
-## When this document is wrong
+## When this document is wrong..
 
 This document will be wrong eventually. Some convention will turn out to bite, some principle will need refinement, some new constraint will emerge.
 
