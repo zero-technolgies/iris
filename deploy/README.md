@@ -22,6 +22,6 @@ deploy/
 
 ## What's not here
 
-Cluster-level infrastructure (cert-manager, ArgoCD) currently lives in `/iac/k8s-config/` as imperative configs from initial bootstrap. This is temporary scaffolding — once Stories 3 and 4 of Epic 2 are complete, these will move under `/deploy/applications/` and `/iac/` will be removed.
+Cluster-level infrastructure is being moved out of imperative bootstrap config and into ArgoCD. cert-manager is managed from `/deploy/applications/cert-manager/`; ArgoCD and remaining bootstrap manifests still live in `/iac/k8s-config/` until the Epic 2 migration stories are complete.
 
 Application source code and service definitions live in `/services/`.

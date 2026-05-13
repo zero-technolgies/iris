@@ -11,6 +11,7 @@ spec:
     path: deploy/applications
     directory:
       recurse: true
+      include: "{root-app.yaml,*/application.yaml}"
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
