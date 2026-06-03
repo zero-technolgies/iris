@@ -1,0 +1,31 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://argoproj.github.io/argo-helm
+      chart: argo-cd
+      targetRevision: 7.6.12
+      helm:
+        releaseName: argocd
+        valueFiles:
+          - $values/deploy/applications/argocd/values.yaml
+    - repoURL: https://github.com/zero-technolgies/iris.git
+      targetRevision: HEAD
+      path: deploy/applications/argocd/manifests
+    - repoURL: https://github.com/zero-technolgies/iris.git
+      targetRevision: HEAD
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: false
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
