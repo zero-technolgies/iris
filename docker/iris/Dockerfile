@@ -1,4 +1,4 @@
-FROM golang:1.26.0-alpine AS builder
+FROM golang:1.26.4-alpine AS builder
 WORKDIR /build
 COPY src/services/iris/ .
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o iris .
