@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: iris
-          image: ghcr.io/zero-technolgies/iris:c432d97
+          image: ghcr.io/zero-technolgies/iris:a4df2eb
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
