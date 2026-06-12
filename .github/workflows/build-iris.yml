@@ -50,6 +50,7 @@ jobs:
           docker build \
             --platform linux/amd64 \
             --file docker/iris/Dockerfile \
+            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
             --tag "${{ steps.meta.outputs.tagged_image }}" \
             --tag "${{ steps.meta.outputs.image }}:latest" \
             .
