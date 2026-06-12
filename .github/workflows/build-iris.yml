@@ -12,6 +12,7 @@ on:
 permissions:
   contents: write
   packages: write
+  pull-requests: write
 
 jobs:
   build:
@@ -84,18 +85,58 @@ jobs:
           git diff -- "${manifest}"
 
       - name: Commit deploy manifest update
+        id: commit
         shell: bash
         run: |
           manifest="deploy/applications/iris/manifests/deployment.yaml"
+          branch="ci/update-iris-image"
 
           if git diff --quiet -- "${manifest}"; then
             echo "Deploy manifest already references ${{ steps.meta.outputs.tagged_image }}"
+            echo "changed=false" >> "${GITHUB_OUTPUT}"
             exit 0
           fi
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
+          git switch -c "${branch}"
           git add "${manifest}"
           git commit -m "ci(deploy): update Iris image to ${{ steps.meta.outputs.short_sha }} [skip ci]"
-          git push origin main
+          git push --force origin "HEAD:${branch}"
+
+          echo "changed=true" >> "${GITHUB_OUTPUT}"
+          echo "branch=${branch}" >> "${GITHUB_OUTPUT}"
+
+      - name: Open or update deploy PR
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ steps.commit.outputs.branch }}
+          IMAGE: ${{ steps.meta.outputs.tagged_image }}
+          SHORT_SHA: ${{ steps.meta.outputs.short_sha }}
+        shell: bash
+        run: |
+          title="ci(deploy): update Iris image to ${SHORT_SHA}"
+          body="$(printf 'Updates the Iris Deployment image tag to:\n\n`%s`\n\nThis PR was opened by the Build Iris workflow after publishing the image to GHCR.\n\nRefs: CU-86b9x414r\n' "${IMAGE}")"
+          pr_number="$(gh pr list \
+            --repo "${GITHUB_REPOSITORY}" \
+            --head "${BRANCH}" \
+            --base main \
+            --state open \
+            --json number \
+            --jq '.[0].number')"
+
+          if [ -n "${pr_number}" ]; then
+            gh pr edit "${pr_number}" \
+              --repo "${GITHUB_REPOSITORY}" \
+              --title "${title}" \
+              --body "${body}"
+          else
+            gh pr create \
+              --repo "${GITHUB_REPOSITORY}" \
+              --base main \
+              --head "${BRANCH}" \
+              --title "${title}" \
+              --body "${body}"
+          fi
