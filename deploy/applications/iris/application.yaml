@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: iris
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/zero-technolgies/iris.git
+    targetRevision: HEAD
+    path: deploy/applications/iris/manifests
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: iris
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: false
+    syncOptions:
+      - CreateNamespace=true

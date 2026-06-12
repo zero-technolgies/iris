@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: iris
+  namespace: iris
+  labels:
+    app.kubernetes.io/name: iris
+    app.kubernetes.io/part-of: iris
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: iris
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: iris
+        app.kubernetes.io/part-of: iris
+    spec:
+      containers:
+        - name: iris
+          image: ghcr.io/zero-technolgies/iris:5a000cdc0e585796c59aec1baa246842e34354fc
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: PORT
+              value: "8080"
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
