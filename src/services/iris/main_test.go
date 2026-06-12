@@ -15,10 +15,10 @@ func TestHandlers(t *testing.T) {
 		wantBody string
 	}{
 		{
-			name:     "root returns Iris",
+			name:     "root returns Iris v2",
 			path:     "/",
 			wantCode: http.StatusOK,
-			wantBody: "Iris",
+			wantBody: "Iris v2",
 		},
 		{
 			name:     "healthz returns healthy JSON",

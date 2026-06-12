@@ -53,7 +53,7 @@ func newServer(addr string) *http.Server {
 }
 
 func handleRoot(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, "Iris")
+	fmt.Fprint(w, "Iris v2")
 }
 
 func handleHealthz(w http.ResponseWriter, r *http.Request) {
