@@ -1,0 +1,100 @@
+name: Build Iris
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "src/services/iris/**"
+      - "docker/iris/**"
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  build:
+    name: Build and publish Iris image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.3
+        with:
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set image metadata
+        id: meta
+        shell: bash
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/iris"
+          short_sha="${GITHUB_SHA::7}"
+
+          echo "image=${image}" >> "${GITHUB_OUTPUT}"
+          echo "short_sha=${short_sha}" >> "${GITHUB_OUTPUT}"
+          echo "tagged_image=${image}:${short_sha}" >> "${GITHUB_OUTPUT}"
+
+      - name: Authenticate to GHCR
+        shell: bash
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" \
+            | docker login ghcr.io \
+              --username "${{ github.actor }}" \
+              --password-stdin
+
+      - name: Build Docker image
+        shell: bash
+        run: |
+          docker build \
+            --platform linux/amd64 \
+            --file docker/iris/Dockerfile \
+            --tag "${{ steps.meta.outputs.tagged_image }}" \
+            --tag "${{ steps.meta.outputs.image }}:latest" \
+            .
+
+      - name: Check image size
+        shell: bash
+        run: |
+          size_bytes="$(docker image inspect "${{ steps.meta.outputs.tagged_image }}" --format '{{.Size}}')"
+          max_bytes="$((20 * 1024 * 1024))"
+
+          echo "Image size: ${size_bytes} bytes"
+
+          if [ "${size_bytes}" -gt "${max_bytes}" ]; then
+            echo "Image exceeds 20 MB limit"
+            exit 1
+          fi
+
+      - name: Push Docker image
+        shell: bash
+        run: |
+          docker push "${{ steps.meta.outputs.tagged_image }}"
+          docker push "${{ steps.meta.outputs.image }}:latest"
+
+      - name: Update deploy manifest
+        shell: bash
+        run: |
+          manifest="deploy/applications/iris/manifests/deployment.yaml"
+          image="${{ steps.meta.outputs.tagged_image }}"
+
+          IMAGE="${image}" perl -0pi -e 's#^(\s*image: ).*#$1$ENV{IMAGE}#m' "${manifest}"
+          git diff -- "${manifest}"
+
+      - name: Commit deploy manifest update
+        shell: bash
+        run: |
+          manifest="deploy/applications/iris/manifests/deployment.yaml"
+
+          if git diff --quiet -- "${manifest}"; then
+            echo "Deploy manifest already references ${{ steps.meta.outputs.tagged_image }}"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add "${manifest}"
+          git commit -m "ci(deploy): update Iris image to ${{ steps.meta.outputs.short_sha }} [skip ci]"
+          git push origin main
