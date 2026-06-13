@@ -57,6 +57,33 @@ Build the runtime image:
 docker build -f ../../../docker/ingestion-server/Dockerfile -t iris-ingestion-server:local ../../..
 ```
 
+## Webhook framework
+
+Generic webhook handling lives in `internal/ingest`.
+
+Source adapters implement:
+
+```go
+type Receiver interface {
+    ValidateSignature(req *http.Request) error
+    Parse(body []byte) ([]Event, error)
+}
+```
+
+The HTTP server wires receivers by URL path, such as `/webhooks/github` or `/webhooks/argocd`. This story registers no real source adapters yet; later source stories add receivers to that route map.
+
+For v0, events default to the seeded Iris tenant ID:
+
+```text
+00000000-0000-0000-0000-000000000001
+```
+
+Run the webhook integration test against a migrated local Postgres:
+
+```sh
+DATABASE_URL='postgres://postgres:postgres@localhost:55435/iris?sslmode=disable' go test -tags integration ./internal/ingest
+```
+
 ## Migrations
 
 Migrations use `golang-migrate` through the local runner in `cmd/migrate`.
