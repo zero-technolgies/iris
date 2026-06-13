@@ -9,3 +9,119 @@ configs:
 crds:
   install: true
   keep: true
+
+notifications:
+  enabled: true
+  argocdUrl: https://argocd.iris.calebache.com
+
+  # The value is resolved from argocd-notifications-secret in the argocd
+  # namespace. Mirror the same secret value into
+  # postgres/ingestion-argocd-webhook-secret key "secret" for the ingestion
+  # adapter.
+  notifiers:
+    service.webhook.iris-ingestion: |
+      url: http://ingestion.postgres.svc.cluster.local:8080/webhooks/argocd
+      headers:
+        - name: Content-Type
+          value: application/json
+        - name: X-Iris-Webhook-Secret
+          value: $iris-webhook-secret
+
+  # Global subscription covers all ArgoCD Applications; annotations on the
+  # root App-of-Apps do not propagate to child Application resources.
+  subscriptions:
+    - recipients:
+        - iris-ingestion
+      triggers:
+        - on-sync-succeeded
+        - on-sync-failed
+        - on-sync-status-unknown
+        - on-health-degraded
+
+  templates:
+    template.iris-sync-succeeded: |
+      webhook:
+        iris-ingestion:
+          method: POST
+          body: |
+            {
+              "event_type": "argocd.sync.succeeded",
+              "application_name": "{{.app.metadata.name}}",
+              "target_revision": "{{.app.status.sync.revision}}",
+              "source_repo": "{{.app.spec.source.repoURL}}",
+              "sync_status": "{{.app.status.sync.status}}",
+              "timestamp": "{{.app.status.operationState.finishedAt}}"
+            }
+
+    template.iris-sync-failed: |
+      webhook:
+        iris-ingestion:
+          method: POST
+          body: |
+            {
+              "event_type": "argocd.sync.failed",
+              "application_name": "{{.app.metadata.name}}",
+              "target_revision": "{{.app.status.sync.revision}}",
+              "source_repo": "{{.app.spec.source.repoURL}}",
+              "sync_status": "{{.app.status.sync.status}}",
+              "timestamp": "{{.app.status.operationState.finishedAt}}",
+              "failure_message": "{{.app.status.operationState.message}}"
+            }
+
+    template.iris-sync-status-unknown: |
+      webhook:
+        iris-ingestion:
+          method: POST
+          body: |
+            {
+              "event_type": "argocd.sync.status_unknown",
+              "application_name": "{{.app.metadata.name}}",
+              "target_revision": "{{.app.status.sync.revision}}",
+              "source_repo": "{{.app.spec.source.repoURL}}",
+              "sync_status": "{{.app.status.sync.status}}",
+              "timestamp": "{{(call .time.Now).Format \"2006-01-02T15:04:05Z07:00\"}}"
+            }
+
+    template.iris-health-degraded: |
+      webhook:
+        iris-ingestion:
+          method: POST
+          body: |
+            {
+              "event_type": "argocd.health.degraded",
+              "application_name": "{{.app.metadata.name}}",
+              "target_revision": "{{.app.status.sync.revision}}",
+              "source_repo": "{{.app.spec.source.repoURL}}",
+              "sync_status": "{{.app.status.sync.status}}",
+              "timestamp": "{{(call .time.Now).Format \"2006-01-02T15:04:05Z07:00\"}}",
+              "current_health_status": "{{.app.status.health.status}}"
+            }
+
+  triggers:
+    trigger.on-sync-succeeded: |
+      - description: Application sync operation succeeded.
+        oncePer: app.status.operationState.finishedAt
+        send:
+          - iris-sync-succeeded
+        when: app.status.operationState.phase in ['Succeeded']
+
+    trigger.on-sync-failed: |
+      - description: Application sync operation failed.
+        oncePer: app.status.operationState.finishedAt
+        send:
+          - iris-sync-failed
+        when: app.status.operationState.phase in ['Error', 'Failed']
+
+    trigger.on-sync-status-unknown: |
+      - description: Application sync status is unknown.
+        oncePer: app.status.sync.revision
+        send:
+          - iris-sync-status-unknown
+        when: app.status.sync.status == 'Unknown'
+
+    trigger.on-health-degraded: |
+      - description: Application health is degraded.
+        oncePer: app.status.health.status
+        send:
+          - iris-health-degraded
+        when: app.status.health.status == 'Degraded'
