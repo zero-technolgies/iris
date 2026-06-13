@@ -27,7 +27,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: migrate
-          image: ghcr.io/zero-technolgies/iris-ingestion-migrate:latest
+          image: ghcr.io/zero-technolgies/iris-ingestion-migrate:1c9751d
           imagePullPolicy: IfNotPresent
           args:
             - up

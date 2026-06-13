@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: ingestion
-          image: ghcr.io/zero-technolgies/iris-ingestion:latest
+          image: ghcr.io/zero-technolgies/iris-ingestion:1c9751d
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
