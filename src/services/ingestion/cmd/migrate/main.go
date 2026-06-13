@@ -48,7 +48,9 @@ func run(args []string, getenv func(string) string, out io.Writer) error {
 		if err := migrator.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 			return fmt.Errorf("applying migrations: %w", err)
 		}
-		fmt.Fprintln(out, "migrations up to date")
+		if err := writeOutput(out, "migrations up to date\n"); err != nil {
+			return err
+		}
 	case "down":
 		steps, err := parseDownSteps(args)
 		if err != nil {
@@ -57,7 +59,9 @@ func run(args []string, getenv func(string) string, out io.Writer) error {
 		if err := migrator.Steps(-steps); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 			return fmt.Errorf("rolling back migrations: %w", err)
 		}
-		fmt.Fprintf(out, "rolled back %d migration(s)\n", steps)
+		if err := writeOutput(out, "rolled back %d migration(s)\n", steps); err != nil {
+			return err
+		}
 	case "force":
 		version, err := parseForceVersion(args)
 		if err != nil {
@@ -66,17 +70,20 @@ func run(args []string, getenv func(string) string, out io.Writer) error {
 		if err := migrator.Force(version); err != nil {
 			return fmt.Errorf("forcing migration version: %w", err)
 		}
-		fmt.Fprintf(out, "forced migration version %d\n", version)
+		if err := writeOutput(out, "forced migration version %d\n", version); err != nil {
+			return err
+		}
 	case "version":
 		version, dirty, err := migrator.Version()
 		if errors.Is(err, migrate.ErrNilVersion) {
-			fmt.Fprintln(out, "version: none dirty: false")
-			return nil
+			return writeOutput(out, "version: none dirty: false\n")
 		}
 		if err != nil {
 			return fmt.Errorf("reading migration version: %w", err)
 		}
-		fmt.Fprintf(out, "version: %d dirty: %t\n", version, dirty)
+		if err := writeOutput(out, "version: %d dirty: %t\n", version, dirty); err != nil {
+			return err
+		}
 	default:
 		return fmt.Errorf("unknown command %q: use up, down <steps>, force <version>, or version", command)
 	}
@@ -125,6 +132,13 @@ func parseForceVersion(args []string) (int, error) {
 	}
 
 	return version, nil
+}
+
+func writeOutput(out io.Writer, format string, args ...any) error {
+	if _, err := fmt.Fprintf(out, format, args...); err != nil {
+		return fmt.Errorf("writing output: %w", err)
+	}
+	return nil
 }
 
 func closeMigrator(migrator *migrate.Migrate) {
