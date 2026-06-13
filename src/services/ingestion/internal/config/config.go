@@ -9,10 +9,11 @@ import (
 const defaultPort = "8080"
 
 type Config struct {
-	Port        string
-	DatabaseURL string
-	LogLevel    slog.Level
-	Environment string
+	Port                string
+	DatabaseURL         string
+	ArgoCDWebhookSecret string
+	LogLevel            slog.Level
+	Environment         string
 }
 
 func Load(getenv func(string) string) (Config, error) {
@@ -26,6 +27,11 @@ func Load(getenv func(string) string) (Config, error) {
 		return Config{}, fmt.Errorf("DATABASE_URL is required")
 	}
 
+	argocdWebhookSecret := getenv("ARGOCD_WEBHOOK_SECRET")
+	if argocdWebhookSecret == "" {
+		return Config{}, fmt.Errorf("ARGOCD_WEBHOOK_SECRET is required")
+	}
+
 	logLevel, err := parseLogLevel(getenv("LOG_LEVEL"))
 	if err != nil {
 		return Config{}, err
@@ -37,10 +43,11 @@ func Load(getenv func(string) string) (Config, error) {
 	}
 
 	return Config{
-		Port:        port,
-		DatabaseURL: databaseURL,
-		LogLevel:    logLevel,
-		Environment: strings.ToLower(environment),
+		Port:                port,
+		DatabaseURL:         databaseURL,
+		ArgoCDWebhookSecret: argocdWebhookSecret,
+		LogLevel:            logLevel,
+		Environment:         strings.ToLower(environment),
 	}, nil
 }
 

@@ -36,6 +36,11 @@ spec:
                 secretKeyRef:
                   name: iris-postgres-app
                   key: uri
+            - name: ARGOCD_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: ingestion-argocd-webhook-secret
+                  key: secret
           livenessProbe:
             httpGet:
               path: /healthz
