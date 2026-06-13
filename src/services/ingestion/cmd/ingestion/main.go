@@ -40,7 +40,7 @@ func run() error {
 	}
 	defer pool.Close()
 
-	httpServer := server.New(cfg.Address(), pool, logger)
+	httpServer := server.New(cfg.Address(), pool, nil, logger)
 
 	serverErr := make(chan error, 1)
 	go func() {

@@ -6,10 +6,17 @@ import (
 	"log/slog"
 	"net/http"
 	"time"
+
+	"github.com/zero-technolgies/iris/src/services/ingestion/internal/ingest"
 )
 
 type Pinger interface {
 	Ping(context.Context) error
+}
+
+type Database interface {
+	Pinger
+	ingest.EventWriter
 }
 
 type Handler struct {
@@ -17,15 +24,15 @@ type Handler struct {
 	logger *slog.Logger
 }
 
-func New(addr string, db Pinger, logger *slog.Logger) *http.Server {
+func New(addr string, db Database, webhookReceivers map[string]ingest.Receiver, logger *slog.Logger) *http.Server {
 	return &http.Server{
 		Addr:              addr,
-		Handler:           NewHandler(db, logger),
+		Handler:           NewHandler(db, webhookReceivers, logger),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 }
 
-func NewHandler(db Pinger, logger *slog.Logger) http.Handler {
+func NewHandler(db Database, webhookReceivers map[string]ingest.Receiver, logger *slog.Logger) http.Handler {
 	handler := &Handler{
 		db:     db,
 		logger: logger,
@@ -34,6 +41,7 @@ func NewHandler(db Pinger, logger *slog.Logger) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", handler.healthz)
 	mux.HandleFunc("GET /readyz", handler.readyz)
+	ingest.NewHandler(webhookReceivers, ingest.NewRepository(db), logger).Register(mux)
 
 	return mux
 }

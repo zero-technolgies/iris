@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type fakePinger struct {
@@ -18,8 +20,12 @@ func (p fakePinger) Ping(context.Context) error {
 	return p.err
 }
 
+func (p fakePinger) Exec(context.Context, string, ...any) (pgconn.CommandTag, error) {
+	return pgconn.NewCommandTag("INSERT 0 1"), nil
+}
+
 func TestHealthzReturnsOKWhenPostgresIsReachable(t *testing.T) {
-	handler := NewHandler(fakePinger{}, testLogger())
+	handler := NewHandler(fakePinger{}, nil, testLogger())
 	request := httptest.NewRequest(http.MethodGet, "/healthz", nil)
 	response := httptest.NewRecorder()
 
@@ -34,7 +40,7 @@ func TestHealthzReturnsOKWhenPostgresIsReachable(t *testing.T) {
 }
 
 func TestHealthzReturnsUnavailableWhenPostgresPingFails(t *testing.T) {
-	handler := NewHandler(fakePinger{err: errors.New("database unavailable")}, testLogger())
+	handler := NewHandler(fakePinger{err: errors.New("database unavailable")}, nil, testLogger())
 	request := httptest.NewRequest(http.MethodGet, "/healthz", nil)
 	response := httptest.NewRecorder()
 
@@ -49,7 +55,7 @@ func TestHealthzReturnsUnavailableWhenPostgresPingFails(t *testing.T) {
 }
 
 func TestReadyzReturnsOK(t *testing.T) {
-	handler := NewHandler(fakePinger{}, testLogger())
+	handler := NewHandler(fakePinger{}, nil, testLogger())
 	request := httptest.NewRequest(http.MethodGet, "/readyz", nil)
 	response := httptest.NewRecorder()
 
