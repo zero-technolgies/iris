@@ -1,0 +1,154 @@
+name: Build Ingestion
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/build-ingestion.yml"
+      - "src/services/ingestion/**"
+      - "docker/ingestion*/**"
+
+permissions:
+  contents: write
+  packages: write
+  pull-requests: write
+
+jobs:
+  build:
+    name: Build and publish ingestion images
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.3
+        with:
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set image metadata
+        id: meta
+        shell: bash
+        run: |
+          registry_owner="${GITHUB_REPOSITORY_OWNER,,}"
+          short_sha="${GITHUB_SHA::7}"
+          server_image="ghcr.io/${registry_owner}/iris-ingestion"
+          migrate_image="ghcr.io/${registry_owner}/iris-ingestion-migrate"
+
+          echo "short_sha=${short_sha}" >> "${GITHUB_OUTPUT}"
+          echo "server_image=${server_image}" >> "${GITHUB_OUTPUT}"
+          echo "migrate_image=${migrate_image}" >> "${GITHUB_OUTPUT}"
+          echo "tagged_server_image=${server_image}:${short_sha}" >> "${GITHUB_OUTPUT}"
+          echo "tagged_migrate_image=${migrate_image}:${short_sha}" >> "${GITHUB_OUTPUT}"
+
+      - name: Authenticate to GHCR
+        shell: bash
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" \
+            | docker login ghcr.io \
+              --username "${{ github.actor }}" \
+              --password-stdin
+
+      - name: Build ingestion server image
+        shell: bash
+        run: |
+          docker build \
+            --platform linux/amd64 \
+            --file docker/ingestion-server/Dockerfile \
+            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+            --tag "${{ steps.meta.outputs.tagged_server_image }}" \
+            --tag "${{ steps.meta.outputs.server_image }}:latest" \
+            .
+
+      - name: Build ingestion migration image
+        shell: bash
+        run: |
+          docker build \
+            --platform linux/amd64 \
+            --file docker/ingestion/Dockerfile \
+            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+            --tag "${{ steps.meta.outputs.tagged_migrate_image }}" \
+            --tag "${{ steps.meta.outputs.migrate_image }}:latest" \
+            .
+
+      - name: Push ingestion images
+        shell: bash
+        run: |
+          docker push "${{ steps.meta.outputs.tagged_server_image }}"
+          docker push "${{ steps.meta.outputs.server_image }}:latest"
+          docker push "${{ steps.meta.outputs.tagged_migrate_image }}"
+          docker push "${{ steps.meta.outputs.migrate_image }}:latest"
+
+      - name: Update deploy manifests
+        shell: bash
+        run: |
+          deployment="deploy/applications/ingestion/manifests/deployment.yaml"
+          migration_job="deploy/applications/ingestion/manifests/migration-job.yaml"
+
+          IMAGE="${{ steps.meta.outputs.tagged_server_image }}" \
+            perl -0pi -e 's#^(\s*image: ).*iris-ingestion:.*#$1$ENV{IMAGE}#m' "${deployment}"
+
+          IMAGE="${{ steps.meta.outputs.tagged_migrate_image }}" \
+            perl -0pi -e 's#^(\s*image: ).*iris-ingestion-migrate:.*#$1$ENV{IMAGE}#m' "${migration_job}"
+
+          git diff -- "${deployment}" "${migration_job}"
+
+      - name: Commit deploy manifest update
+        id: commit
+        shell: bash
+        run: |
+          deployment="deploy/applications/ingestion/manifests/deployment.yaml"
+          migration_job="deploy/applications/ingestion/manifests/migration-job.yaml"
+          branch="ci/update-ingestion-images"
+
+          if git diff --quiet -- "${deployment}" "${migration_job}"; then
+            echo "Deploy manifests already reference ${{ steps.meta.outputs.short_sha }}"
+            echo "changed=false" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git switch -c "${branch}"
+          git add "${deployment}" "${migration_job}"
+          git commit -m "ci(deploy): update ingestion images to ${{ steps.meta.outputs.short_sha }} [skip ci]"
+          git push --force origin "HEAD:${branch}"
+
+          echo "changed=true" >> "${GITHUB_OUTPUT}"
+          echo "branch=${branch}" >> "${GITHUB_OUTPUT}"
+
+      - name: Open or update deploy PR
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ steps.commit.outputs.branch }}
+          SERVER_IMAGE: ${{ steps.meta.outputs.tagged_server_image }}
+          MIGRATE_IMAGE: ${{ steps.meta.outputs.tagged_migrate_image }}
+          SHORT_SHA: ${{ steps.meta.outputs.short_sha }}
+        shell: bash
+        run: |
+          title="ci(deploy): update ingestion images to ${SHORT_SHA}"
+          body="$(printf 'Updates the ingestion Deployment and migration Job image tags to:\n\n- `%s`\n- `%s`\n\nThis PR was opened by the Build Ingestion workflow after publishing the images to GHCR.\n\nRefs: CU-86b9xtn2b\n' "${SERVER_IMAGE}" "${MIGRATE_IMAGE}")"
+          pr_number="$(gh pr list \
+            --repo "${GITHUB_REPOSITORY}" \
+            --head "${BRANCH}" \
+            --base main \
+            --state open \
+            --json number \
+            --jq '.[0].number')"
+
+          if [ -n "${pr_number}" ]; then
+            gh pr edit "${pr_number}" \
+              --repo "${GITHUB_REPOSITORY}" \
+              --title "${title}" \
+              --body "${body}"
+          else
+            gh pr create \
+              --repo "${GITHUB_REPOSITORY}" \
+              --base main \
+              --head "${BRANCH}" \
+              --title "${title}" \
+              --body "${body}"
+          fi
