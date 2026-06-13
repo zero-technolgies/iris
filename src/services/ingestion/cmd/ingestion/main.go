@@ -10,10 +10,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/zero-technolgies/iris/services/ingestion/internal/config"
-	"github.com/zero-technolgies/iris/services/ingestion/internal/logging"
-	"github.com/zero-technolgies/iris/services/ingestion/internal/postgres"
-	"github.com/zero-technolgies/iris/services/ingestion/internal/server"
+	"github.com/zero-technolgies/iris/src/services/ingestion/internal/config"
+	"github.com/zero-technolgies/iris/src/services/ingestion/internal/logging"
+	"github.com/zero-technolgies/iris/src/services/ingestion/internal/postgres"
+	"github.com/zero-technolgies/iris/src/services/ingestion/internal/server"
 )
 
 func main() {

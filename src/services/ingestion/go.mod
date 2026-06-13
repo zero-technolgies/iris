@@ -1,4 +1,4 @@
-module github.com/zero-technolgies/iris/services/ingestion
+module github.com/zero-technolgies/iris/src/services/ingestion
 
 go 1.26.4
 
