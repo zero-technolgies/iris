@@ -11,9 +11,11 @@ import (
 	"time"
 
 	"github.com/zero-technolgies/iris/src/services/ingestion/internal/config"
+	"github.com/zero-technolgies/iris/src/services/ingestion/internal/ingest"
 	"github.com/zero-technolgies/iris/src/services/ingestion/internal/logging"
 	"github.com/zero-technolgies/iris/src/services/ingestion/internal/postgres"
 	"github.com/zero-technolgies/iris/src/services/ingestion/internal/server"
+	"github.com/zero-technolgies/iris/src/services/ingestion/internal/sources/argocd"
 )
 
 func main() {
@@ -40,7 +42,12 @@ func run() error {
 	}
 	defer pool.Close()
 
-	httpServer := server.New(cfg.Address(), pool, nil, logger)
+	receivers, err := webhookReceivers(cfg)
+	if err != nil {
+		return err
+	}
+
+	httpServer := server.New(cfg.Address(), pool, receivers, logger)
 
 	serverErr := make(chan error, 1)
 	go func() {
@@ -66,4 +73,15 @@ func run() error {
 	}
 
 	return nil
+}
+
+func webhookReceivers(cfg config.Config) (map[string]ingest.Receiver, error) {
+	argocdReceiver, err := argocd.New(cfg.ArgoCDWebhookSecret)
+	if err != nil {
+		return nil, fmt.Errorf("creating argocd receiver: %w", err)
+	}
+
+	return map[string]ingest.Receiver{
+		"/webhooks/argocd": argocdReceiver,
+	}, nil
 }

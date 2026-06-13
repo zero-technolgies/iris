@@ -19,6 +19,7 @@ Configuration is read from environment variables:
 
 - `PORT`: HTTP port, defaults to `8080`
 - `DATABASE_URL`: required Postgres connection string
+- `ARGOCD_WEBHOOK_SECRET`: required shared secret for ArgoCD notification webhooks
 - `LOG_LEVEL`: `debug`, `info`, `warn`, or `error`; defaults to `info`
 - `ENV`: `prod` or `production` enables JSON logs; any other value uses text logs for local development
 
@@ -33,7 +34,7 @@ docker run --rm --name iris-ingestion-postgres -e POSTGRES_PASSWORD=postgres -e 
 Run the server:
 
 ```sh
-DATABASE_URL='postgres://postgres:postgres@localhost:55432/iris?sslmode=disable' go run ./cmd/ingestion
+DATABASE_URL='postgres://postgres:postgres@localhost:55432/iris?sslmode=disable' ARGOCD_WEBHOOK_SECRET='local-secret' go run ./cmd/ingestion
 ```
 
 Check the endpoints:
@@ -70,7 +71,30 @@ type Receiver interface {
 }
 ```
 
-The HTTP server wires receivers by URL path, such as `/webhooks/github` or `/webhooks/argocd`. This story registers no real source adapters yet; later source stories add receivers to that route map.
+The HTTP server wires receivers by URL path, such as `/webhooks/github` or `/webhooks/argocd`. ArgoCD notifications post to `/webhooks/argocd` with the `X-Iris-Webhook-Secret` header.
+
+Create or update the shared ArgoCD webhook secret in Kubernetes:
+
+```sh
+SECRET_VALUE=$(openssl rand -hex 32)
+
+kubectl patch secret argocd-notifications-secret -n argocd \
+  --type=merge -p "{\"stringData\":{\"iris-webhook-secret\":\"${SECRET_VALUE}\"}}"
+
+kubectl create secret generic ingestion-argocd-webhook-secret \
+  -n postgres \
+  --from-literal=secret="${SECRET_VALUE}" \
+  --dry-run=client -o yaml | kubectl apply -f -
+```
+
+Post a local ArgoCD fixture payload:
+
+```sh
+curl -i -X POST http://localhost:8080/webhooks/argocd \
+  -H 'Content-Type: application/json' \
+  -H 'X-Iris-Webhook-Secret: local-secret' \
+  --data-binary @internal/sources/argocd/testdata/sync_succeeded.json
+```
 
 For v0, events default to the seeded Iris tenant ID:
 

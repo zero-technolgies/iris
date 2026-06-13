@@ -1,0 +1,9 @@
+{
+  "event_type": "argocd.health.degraded",
+  "application_name": "iris",
+  "target_revision": "a7f42f5ab94dffc96077fc8cc286b57b3c57a2c3",
+  "source_repo": "https://github.com/zero-technolgies/iris.git",
+  "sync_status": "Synced",
+  "timestamp": "2026-06-13T05:07:44Z",
+  "current_health_status": "Degraded"
+}
