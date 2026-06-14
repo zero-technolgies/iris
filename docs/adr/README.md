@@ -20,3 +20,8 @@ Don't delete the old ADR. Create a new one that supersedes it, and update the ol
 
 ## Index
 - [ADR-0001: Record architecture decisions](0001-record-architecture-decisions.md)
+- [ADR-0002: App-of-Apps pattern with auto-sync and no-prune](0002-app-of-apps-gitops-pattern.md)
+- [ADR-0003: Container registry strategy](0003-container-registry-strategy.md)
+- [ADR-0004: Postgres via CloudNativePG](0004-postgres-cloudnativepg.md)
+- [ADR-0005: Ingestion migrations and initial schema](0005-ingestion-migrations-and-initial-schema.md)
+- [ADR-0006: ArgoCD event delivery via webhooks and MCP](0006-argocd-event-delivery.md)
