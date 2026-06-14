@@ -17,11 +17,15 @@ Do not commit the tunnel token.
 
 ## DNS
 
-`calebache.com` is managed in Route 53, so use a Route 53 CNAME instead of delegating `iris.calebache.com` to Cloudflare:
+`calebache.com` is managed in Route 53, but the public tunnel hostname must still be routed through Cloudflare DNS/proxying. A Route 53 DNS-only CNAME directly to `<tunnel-id>.cfargotunnel.com` is not sufficient for this tunnel because public resolvers can receive a private `fd10::` tunnel address instead of Cloudflare public edge addresses.
+
+Use Route 53 only to delegate the `iris.calebache.com` subdomain to Cloudflare, then create the tunnel public hostname in Cloudflare:
 
 ```text
-webhooks.iris.calebache.com CNAME <tunnel-id>.cfargotunnel.com
+webhooks.iris.calebache.com -> 5a5e7ea7-d4be-4f5d-a9d5-20a0e522c72a
 ```
+
+In practice, create or delegate the `iris.calebache.com` zone in Cloudflare, then add `webhooks.iris.calebache.com` as a public hostname for the tunnel or as a proxied CNAME to `5a5e7ea7-d4be-4f5d-a9d5-20a0e522c72a.cfargotunnel.com`.
 
 ## Public Test
 

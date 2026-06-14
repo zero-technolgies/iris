@@ -40,13 +40,13 @@ ingress:
 
 The Cloudflare Tunnel token is stored manually in the `postgres` namespace as `cloudflared-tunnel-token`, key `token`. The token is never committed to Git.
 
-Use Route 53 for DNS:
+Use Cloudflare-routed DNS for the public tunnel hostname. `calebache.com` remains in Route 53, but Route 53 should delegate `iris.calebache.com` to Cloudflare so Cloudflare can proxy the tunnel hostname:
 
 ```text
-webhooks.iris.calebache.com CNAME <tunnel-id>.cfargotunnel.com
+webhooks.iris.calebache.com -> 5a5e7ea7-d4be-4f5d-a9d5-20a0e522c72a
 ```
 
-This is simpler than delegating `iris.calebache.com` to Cloudflare because `calebache.com` is already managed in Route 53 for the rest of the cluster.
+Do not use a DNS-only Route 53 CNAME directly to `<tunnel-id>.cfargotunnel.com` for this endpoint. Runtime testing showed that public resolvers can receive a private `fd10::` tunnel address, which is not reachable from the public internet. Cloudflare must be authoritative/proxying for the public hostname so clients receive Cloudflare public edge addresses.
 
 ## Consequences
 
@@ -62,7 +62,7 @@ This is simpler than delegating `iris.calebache.com` to Cloudflare because `cale
 - The trust boundary moves outward to Cloudflare's edge. Cloudflare terminates the public connection and forwards traffic through the tunnel.
 - Tunnel availability now depends on Cloudflare and on the `cloudflared` connector pod.
 - A manual secret must exist before the Deployment can run.
-- The DNS record is outside this repo because Route 53 hosts the zone.
+- The DNS records are outside this repo because Route 53 hosts the parent zone and Cloudflare must route the public tunnel hostname.
 
 **Operational constraints**:
 
@@ -74,7 +74,7 @@ This is simpler than delegating `iris.calebache.com` to Cloudflare because `cale
 
 To remove this public ingress:
 
-1. Delete the Route 53 CNAME for `webhooks.iris.calebache.com`.
+1. Delete the Cloudflare public hostname or proxied CNAME for `webhooks.iris.calebache.com`.
 2. Delete the Cloudflare Tunnel in the Cloudflare dashboard or with Cloudflare tooling.
 3. Remove `deploy/applications/cloudflared/` from Git and let ArgoCD delete or orphan it according to the current prune policy.
 4. Delete the runtime Secret:
@@ -89,9 +89,13 @@ kubectl delete secret -n postgres cloudflared-tunnel-token
 
 Rejected. This exposes the home network directly and requires router/firewall changes. The public webhook use case does not justify that blast radius.
 
+**DNS-only Route 53 CNAME directly to `<tunnel-id>.cfargotunnel.com`**
+
+Rejected after runtime testing. It is simple to create, but public DNS resolution returned only `fd10:aec2:5dae::` for this tunnel target, leaving clients with no public route to port 443.
+
 **Delegate `iris.calebache.com` to Cloudflare**
 
-Rejected for now. It would work, but Route 53 already hosts `calebache.com`, and a single CNAME for `webhooks.iris.calebache.com` is simpler for v0.
+Accepted for the public webhook subdomain. Route 53 can keep hosting `calebache.com`, while Cloudflare becomes authoritative for `iris.calebache.com` and can proxy `webhooks.iris.calebache.com` to the tunnel.
 
 **Route all ingestion paths through the tunnel**
 
