@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cloudflared-config
+  namespace: postgres
+  labels:
+    app.kubernetes.io/name: cloudflared
+    app.kubernetes.io/part-of: iris
+data:
+  config.yaml: |
+    ingress:
+      - hostname: webhooks.iris.calebache.com
+        path: /webhooks/.*
+        service: http://ingestion.postgres.svc.cluster.local:8080
+      - service: http_status:404
