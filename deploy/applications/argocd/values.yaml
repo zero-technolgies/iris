@@ -79,7 +79,7 @@ notifications:
               "target_revision": "{{.app.status.sync.revision}}",
               "source_repo": "{{.app.spec.source.repoURL}}",
               "sync_status": "{{.app.status.sync.status}}",
-              "timestamp": "{{(call .time.Now).Format \"2006-01-02T15:04:05Z07:00\"}}"
+              "timestamp": "{{.app.status.reconciledAt}}"
             }
 
     template.iris-health-degraded: |
@@ -93,7 +93,7 @@ notifications:
               "target_revision": "{{.app.status.sync.revision}}",
               "source_repo": "{{.app.spec.source.repoURL}}",
               "sync_status": "{{.app.status.sync.status}}",
-              "timestamp": "{{(call .time.Now).Format \"2006-01-02T15:04:05Z07:00\"}}",
+              "timestamp": "{{.app.status.reconciledAt}}",
               "current_health_status": "{{.app.status.health.status}}"
             }
 
