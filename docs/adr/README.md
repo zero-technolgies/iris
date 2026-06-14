@@ -25,3 +25,4 @@ Don't delete the old ADR. Create a new one that supersedes it, and update the ol
 - [ADR-0004: Postgres via CloudNativePG](0004-postgres-cloudnativepg.md)
 - [ADR-0005: Ingestion migrations and initial schema](0005-ingestion-migrations-and-initial-schema.md)
 - [ADR-0006: ArgoCD event delivery via webhooks and MCP](0006-argocd-event-delivery.md)
+- [ADR-0007: Cloudflare Tunnel ingress for public webhooks](0007-cloudflare-tunnel-ingress.md)
